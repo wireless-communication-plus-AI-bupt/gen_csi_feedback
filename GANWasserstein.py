@@ -76,7 +76,7 @@ class Generator(nn.Module):
         return img
 
 
-# 判别器
+# 判别器去除了sigmoid函数，因为WGAN的W距离作为损失函数不需要sigmoid
 class Critic(nn.Module):
     def __init__(self):
         super(Critic, self).__init__()
