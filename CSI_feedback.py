@@ -15,17 +15,14 @@ import numpy as np
 matplotlib.use("Agg")  # 使用非交互模式
 import argparse
 parser = argparse.ArgumentParser(description='datasets_file')
-parser.add_argument('--train_dataset', type = str, default = 'D:/LZH/data/Random_CSI_featuresA.mat', help = 'file  path of train dataset')
-parser.add_argument('--infer_dataset', type = str, default = 'D:/LZH/data/Random_CSI_featuresB.mat', help = 'file  path of infer dataset')
+parser.add_argument('--dataset', type = str)
 parser.add_argument('--gpu_id', type = str, default = '0', help = 'gpu_id')
 
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
 
 file_path_train_dataset = args.train_dataset
-file_path_infer_dataset = args.infer_dataset
 print(file_path_train_dataset)
-print(file_path_infer_dataset)
 
 '''=============== You need to configure here: ====================================='''
 # Set feedback_bits
@@ -52,7 +49,7 @@ data_train = data_train.transpose([3,2,1,0])
 print(data_train.__class__)
 print(data_train.shape)
 
-x = data_train[:, :, :, :]  # time slot is 21, the dim 1. receive antenna is 0, the dim 4.
+x = data_train[:, :, :, :]  
 x_data = x.reshape(-1, 12 * 32 * 2)
 y_data = x_data
 print(x_data.shape)
@@ -117,7 +114,6 @@ loss = loss_gcs+mse_e+0.25*mse_z  # 损失函数由：loss_sgcs即(1-sgcs)，和
 autoencoderModel.add_loss(loss)
 autoencoderModel.summary()
 
-
 val_gcs = MyMAE()
 
 # sgd = tensorflow.keras.optimizers.SGD(learning_rate=0.00001, decay=1e-4, momentum=0.9)
@@ -127,16 +123,7 @@ adam = tensorflow.keras.optimizers.Adam(learning_rate=learning_rate)
 
 # Model train
 autoencoderModel.compile(optimizer='adam', metrics=val_gcs)  # metrics作为另一个评价标准，不参与训练，history中val_前缀代表验证集上的表现
-history = autoencoderModel.fit(x=X_train, y=Y_train, batch_size=200, epochs=300, verbose=2, validation_split=0.1)
-
-# raise(BaseException)
-
-encoder_address = 'BS_umi_outdoor_'+'encoder_'+str(feedback_bits)+'_NUM_HEAD'+str(NUM_HEAD)+'_LAYER'+str(LAYER)+'_learning'+str(learning_rate)+'.h5'
-decoder_address = 'BS_umi_outdoor_'+'decoder_'+str(feedback_bits)+'_NUM_HEAD'+str(NUM_HEAD)+'_LAYER'+str(LAYER)+'_learning'+str(learning_rate)+'.h5'
-quan_address = 'BS_umi_outdoor_'+'quan_'+str(feedback_bits)+'_NUM_HEAD'+str(NUM_HEAD)+'_LAYER'+str(LAYER)+'_learning'+str(learning_rate)+'.h5'
-encoder.save(encoder_address, save_format='h5')
-decoder.save(decoder_address, save_format='h5')
-q_model.save(quan_address, save_format='h5')
+history = autoencoderModel.fit(x=X_train, y=Y_train, batch_size=512, epochs=300, verbose=2, validation_split=0.1)
 
 ####################  储存loss，绘制loss曲线
 loss = history.history['loss']
@@ -150,13 +137,21 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.savefig("BS_overfitting.png")  # 将图形保存为文件
+EN_BATCH_SIZE = 512
 
-np.save('BS_loss_'+str(feedback_bits)+'bit_'+str(LAYER)+'layer'+'.npy', loss)
-np.save('BS_val_loss_'+str(feedback_bits)+'bit_'+str(LAYER)+'layer'+'.npy', val_loss)
+encode_feature1 = encoder.predict(x_data, EN_BATCH_SIZE)
+print('encode_feature1:')
+print(encode_feature1.shape)
+code_vecs, codes_before, decode_feature1 = q_model.predict(encode_feature1, EN_BATCH_SIZE)
+    
+print('decode_feature1:')
+print(decode_feature1.shape)
+W_pre1 = decoder.predict(decode_feature1, EN_BATCH_SIZE)
+print('W_pre1:')
+print(W_pre1.shape)
 
-with open('./BS_weight.txt','w') as file:
-    for v in q_model.trainable_variables:
-        file.write(str(v.name) + '\n')
-        file.write(str(v.shape) + '\n')
-        file.write(str(v.numpy()) + '\n')
-
+NUM_SAMPLES = x_data.shape[0]
+NUM_SUBBAND = 12  # 子载波数
+gcs,sgcs = cal_score(x_data, W_pre1, NUM_SAMPLES, NUM_SUBBAND)  # 处理时隙任务，计算SGCS时取x_train的最后一个时隙
+print('GCS: %f' %gcs)
+print('SGCS: %f' %sgcs)
