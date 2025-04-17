@@ -13,9 +13,9 @@ import torch.nn.functional as F
 os.makedirs(r'D:\PyTorch-GAN-master\PyTorch-GAN-master\implementations\gan1', exist_ok=True)
 # 参数配置
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default=200)
+parser.add_argument("--n_epochs", type=int, default=400)
 parser.add_argument("--batch_size", type=int, default=64)
-parser.add_argument("--lr_G", type=float, default=0.00002)
+parser.add_argument("--lr_G", type=float, default=0.00001)
 parser.add_argument("--lr_D", type=float, default=0.00001)
 parser.add_argument("--b1", type=float, default=0.5)
 parser.add_argument("--b2", type=float, default=0.999)
@@ -45,7 +45,7 @@ class CSIDataset(Dataset):
         return self.data[idx], 0
 
 
-dataset = CSIDataset('CSI_featuresB.mat')
+dataset = CSIDataset('CSI_featuresA.mat')
 dataloader = DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
 
 # 生成器
@@ -76,7 +76,7 @@ class Generator(nn.Module):
         return img
 
 
-# 判别器去除了sigmoid函数，因为WGAN的W距离作为损失函数不需要sigmoid
+# 判别器
 class Critic(nn.Module):
     def __init__(self):
         super(Critic, self).__init__()
@@ -147,7 +147,7 @@ for epoch in range(opt.n_epochs):
         mse_losses.append(mse.item())
         cosine_squared_losses.append(cosine_squared.item())
 
-        if i % 50 == 0:
+        if i % 2 == 0:
             print(f"[Epoch {epoch}/{opt.n_epochs}] [Batch {i}/{len(dataloader)}] "
                   f"[C loss: {c_loss.item():.4f}] [G loss: {g_loss.item():.4f}] "
                   f"[MSE: {mse.item():.4f}] [Cosine Squared: {cosine_squared.item():.4f}]")
