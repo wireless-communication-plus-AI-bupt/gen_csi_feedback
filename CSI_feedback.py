@@ -21,7 +21,7 @@ parser.add_argument('--gpu_id', type = str, default = '0', help = 'gpu_id')
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
 
-file_path_train_dataset = args.train_dataset
+file_path_train_dataset = 'CSI_featuresC.mat'
 print(file_path_train_dataset)
 
 '''=============== You need to configure here: ====================================='''
@@ -37,7 +37,7 @@ criterion = cal_score_tf
 
 '''================Read Data  ======================================================='''
 data_mat = h5py.File(file_path_train_dataset, 'r')
-string = list(data_mat.keys())[0]
+string = 'CSI_featuresA'
 print(string)
 data = data_mat[string]
 print(data.__class__)
@@ -139,7 +139,7 @@ plt.legend()
 plt.savefig("BS_overfitting.png")  # 将图形保存为文件
 EN_BATCH_SIZE = 512
 
-encode_feature1 = encoder.predict(x_data, EN_BATCH_SIZE)
+encode_feature1 = encoder.predict(x_train_pre, EN_BATCH_SIZE)
 print('encode_feature1:')
 print(encode_feature1.shape)
 code_vecs, codes_before, decode_feature1 = q_model.predict(encode_feature1, EN_BATCH_SIZE)
@@ -150,8 +150,8 @@ W_pre1 = decoder.predict(decode_feature1, EN_BATCH_SIZE)
 print('W_pre1:')
 print(W_pre1.shape)
 
-NUM_SAMPLES = x_data.shape[0]
+NUM_SAMPLES = x_train_pre.shape[0]
 NUM_SUBBAND = 12  # 子载波数
-gcs,sgcs = cal_score(x_data, W_pre1, NUM_SAMPLES, NUM_SUBBAND)  # 处理时隙任务，计算SGCS时取x_train的最后一个时隙
+gcs,sgcs = cal_score(x_train_pre, W_pre1, NUM_SAMPLES, NUM_SUBBAND)  # 处理时隙任务，计算SGCS时取x_train的最后一个时隙
 print('GCS: %f' %gcs)
 print('SGCS: %f' %sgcs)
